@@ -14,12 +14,133 @@ const mySwiper = new Swiper('.swiper-container', {
 const buttonCart = document.querySelector('.button-cart');
 const modalCart = document.querySelector('#modal-cart');
 const modalClose = document.querySelector('.modal-close');
+const more = document.querySelector('.more');
+const navigationLink = document.querySelectorAll('.navigation-link');
+const longGoodsList = document.querySelector('.long-goods-list');
+const cartTableGoods = document.querySelector('.cart-table__goods');
+const cardTableTotal = document.querySelector('.card-table__total');
 
-const openModal = function() {
+const getGoods = async () => {
+	const result = await fetch('db/db.json');
+	if (!result.ok) {
+		throw 'Ошибка: ' + result.status;
+	}
+	return result.json();
+}
+
+const cart = {
+	cartGoods: [
+		{
+			id: "099",
+			name: "Часы Dior",
+			price: 999,
+			count: 2,
+		},
+		{
+			id: "090",
+			name: "Кеды",
+			price: 9,
+			count: 3,
+		},
+	],
+	renderCart(){
+		cartTableGoods.textContent = '';
+		this.cartGoods.forEach(({ id, name, price, count }) => {
+			const trGood = document.createElement('tr');
+			trGood.className = 'cart-item';
+			trGood.dataset.id = id;
+			trGood.innerHTML = `
+				<td>${name}</td>
+				<td>${price}$</td>
+				<td><button class="cart-btn-minus">-</button></td>
+				<td>${count}</td>
+				<td><button class="cart-btn-plus">+</button></td>
+				<td>${price * count}$</td>
+				<td><button class="cart-btn-delete">x</button></td>
+			`;
+			cartTableGoods.append(trGood);
+		});
+		const totalPrice = this.cartGoods.reduce((sum, item) => {
+			return sum + item.price * item.count;
+		}, 0);
+
+		cardTableTotal.textContent = totalPrice + '$';
+	},
+	deleteGood(id) {
+		// элемент с данным id не попадет в новый отфильтрованный массив
+		this.cartGoods = this.cartGoods.filter(item => id !== item.id);
+		this.renderCart();
+	},
+	minusGood(id) {
+		for(const item of this.cartGoods) {
+			if(item.id === id) {
+				if(item.count <= 1) {
+					this.deleteGood(id);
+				} else {
+					item.count--;
+				}
+				break;
+			}
+		}
+		this.renderCart();
+	},
+	plusGood(id) {
+		for(const item of this.cartGoods) {
+			if(item.id === id) {
+				item.count++;
+				break;
+			}
+		}
+		this.renderCart();
+	},
+	addCartGoods(id) {
+		const goodItem = this.cartGoods.find(item => item.id === id);
+		if(goodItem) {
+			this.plusGood(id);
+		} else {
+			getGoods()
+				.then(data => data.find(item => item.id === id))
+				.then(({ id, name, price}) => {
+					this.cartGoods.push({
+						id, 
+						name,
+						price,
+						count: 1
+					});
+				});
+		}
+	},
+}
+
+document.body.addEventListener('click', event => {
+	const addToCart = event.target.closest('.add-to-cart');
+	if(addToCart) {
+		cart.addCartGoods(addToCart.dataset.id);
+	}
+})
+
+cartTableGoods.addEventListener('click', event => {
+	const target = event.target;
+	if(target.tagName === "BUTTON") {
+		const id = target.closest('.cart-item').dataset.id;
+		if (target.classList.contains('cart-btn-delete')) {
+			cart.deleteGood(id);
+		}
+		if (target.classList.contains('cart-btn-minus')) {
+			cart.minusGood(id);
+		}
+		if (target.classList.contains('cart-btn-plus')) {
+			cart.plusGood(id);
+		}
+	}
+});
+
+const openModal = () => {
+	cart.renderCart();
 	modalCart.classList.add('show');
 };
 
-const closeModal = function() {
+const closeModal = () => {
 	modalCart.classList.remove('show');
 };
 
@@ -33,7 +154,7 @@ modalClose.addEventListener('click', closeModal);
 {
 	const scrollLinks = document.querySelectorAll('a.scroll-link');
 	for (const scrollLink of scrollLinks) {
-		scrollLink.addEventListener('click', function (event) {
+		scrollLink.addEventListener('click', event => {
 			event.preventDefault();
 			const id = scrollLink.getAttribute('href');
 			document.querySelector(id).scrollIntoView({
@@ -46,17 +167,6 @@ modalClose.addEventListener('click', closeModal);
 
 //goods 
 
-const more = document.querySelector('.more');
-const navigationLink = document.querySelectorAll('.navigation-link');
-const longGoodsList = document.querySelector('.long-goods-list');
-
-const getGoods = async function () {
-	const result = await fetch('db/db.json');
-	if (!result.ok) {
-		throw 'Ошибка: ' + result.status;
-	}
-	return result.json();
-}
 
 // создаем карточку товара
 const createCard = function ({label, img, name, description, id, price}) {
@@ -87,7 +197,7 @@ const renderCards = function(data) {
 	document.body.classList.add('show-goods');
 };
 
-more.addEventListener('click', function(event) {
+more.addEventListener('click', event => {
 	event.preventDefault();
 	getGoods().then(renderCards);
 });
@@ -95,23 +205,20 @@ more.addEventListener('click', function(event) {
 //фильтрация товаров
 const filterCards = function (field, value) {
 	// получим товары
+	// применим фильтр к каждому товару, если он совпадает с заданным значением, добавим его в фильтрованный список
 	getGoods()
-		.then(function (data) {
-			// применим фильтр к каждому товару, если он совпадает с заданным значением, добавим его в фильтрованный список
-			const filteredGoods = data.filter(function (good) {
-				return good[field] === value
-			});
-			return filteredGoods;
-		})
+		.then(data => data.filter(good => good[field] === value))
 		.then(renderCards);
 };
 
 // навесим событие ниа каждый тип товара, внутри ссылки есть его категория и название
 navigationLink.forEach(function (link) {
-	link.addEventListener('click', function (event) {
+	link.addEventListener('click', event => {
 		event.preventDefault();
 		const field = link.dataset.field;
 		const value = link.textContent;
 		filterCards(field, value);
 	});
 });
+
+// 38 min
