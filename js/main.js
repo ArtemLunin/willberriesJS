@@ -29,20 +29,7 @@ const getGoods = async () => {
 }
 
 const cart = {
-	cartGoods: [
-		{
-			id: "099",
-			name: "Часы Dior",
-			price: 999,
-			count: 2,
-		},
-		{
-			id: "090",
-			name: "Кеды",
-			price: 9,
-			count: 3,
-		},
-	],
+	cartGoods: [],
 	renderCart(){
 		cartTableGoods.textContent = '';
 		this.cartGoods.forEach(({ id, name, price, count }) => {
@@ -221,4 +208,18 @@ navigationLink.forEach(function (link) {
 	});
 });
 
-// 38 min
+const modalForm = document.querySelector('.modal-form');
+const postData = dataUser => fetch('server.php', {
+	method: 'POST',
+	body: dataUser,
+});
+
+modalForm.addEventListener('submit', event => {
+	event.preventDefault();
+
+	const formData = new FormData(modalForm);
+	console.log(formData);
+	postData(formData);
+});
+
+// 12 min
