@@ -218,8 +218,23 @@ modalForm.addEventListener('submit', event => {
 	event.preventDefault();
 
 	const formData = new FormData(modalForm);
-	console.log(formData);
-	postData(formData);
+	formData.append('cart', JSON.stringify(cart.cartGoods));
+
+	postData(formData)
+		.then(response => {
+			if(!response.ok) {
+				throw new Error(response.status);
+			}
+			alert('Заказ успешно отправлен');
+			console.log(response.statusText);
+		})
+		.catch(err => {
+			console.error(err);
+		})
+		.finally(() => {
+			closeModal();
+			modalForm.reset();
+			cart.cartGoods.length = 0;
+		});
 });
 
-// 12 min
